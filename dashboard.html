@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Website Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
+</head>
+<body class="bg-slate-50 min-h-screen">
+    <nav class="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center">
+        <div class="flex items-center gap-2 font-bold text-xl">
+            <div class="bg-indigo-600 p-2 rounded-lg text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+            </div>
+            WebPortal
+        </div>
+        <button onclick="logout()" class="text-sm text-red-600 font-medium">Logout</button>
+    </nav>
+
+    <main class="p-6 max-w-5xl mx-auto">
+        <div class="bg-indigo-900 text-white p-8 rounded-3xl mb-8">
+            <h1 class="text-3xl font-bold mb-2">Hello, <span id="userNameDisplay">User</span>!</h1>
+            <p class="opacity-80 mb-6">Manage your website progress from here.</p>
+            <div class="flex gap-4">
+                <a href="/websiteform.html" id="formBtn" class="bg-white text-indigo-900 px-6 py-3 rounded-xl font-bold shadow-lg inline-block">Start Website Form</a>
+                <button onclick="toggleSupport()" class="bg-indigo-700 px-6 py-3 rounded-xl font-bold shadow-lg">Contact Support</button>
+            </div>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-6">
+            <div id="statusCard" class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <h3 class="font-bold mb-4">Submission Status</h3>
+                <div id="statusContent" class="text-slate-500">Checking for submissions...</div>
+            </div>
+            
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <h3 class="font-bold mb-4">Quick Guides</h3>
+                <div class="space-y-2">
+                    <a href="/googlesites.html" class="block p-3 bg-slate-50 rounded-lg hover:bg-slate-100 border border-slate-100">Build with Google Sites →</a>
+                    <a href="/coding-github.html" class="block p-3 bg-slate-50 rounded-lg hover:bg-slate-100 border border-slate-100">Deploy with GitHub Pages →</a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Redirect to login if user session is missing
+        const user = JSON.parse(localStorage.getItem('portalUser'));
+        if (!user) {
+            window.location.href = window.location.origin + '/login.html';
+        } else {
+            document.getElementById('userNameDisplay').textContent = user.name;
+        }
+
+        // Handle Firebase Initialization with fallbacks
+        let firebaseConfig = {};
+        try {
+            firebaseConfig = JSON.parse(__firebase_config);
+        } catch (e) {
+            console.error("Firebase configuration missing or invalid.");
+        }
+
+        if (firebaseConfig.apiKey) {
+            firebase.initializeApp(firebaseConfig);
+            const db = firebase.firestore();
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-web-portal';
+
+            if (user && user.id) {
+                db.collection(`artifacts/${appId}/public/data/responses`)
+                    .where('userId', '==', user.id)
+                    .onSnapshot(snap => {
+                        const content = document.getElementById('statusContent');
+                        const btn = document.getElementById('formBtn');
+                        if (!snap.empty) {
+                            const data = snap.docs[0].data();
+                            content.innerHTML = `<div class="text-green-600 font-bold mb-2">Submitted Successfully!</div>
+                                                 <p class="text-sm">Method: ${data.method || data.creationMethod || 'Existing Site'}</p>
+                                                 <p class="text-xs text-slate-400 mt-2">Our team is reviewing your request.</p>`;
+                            btn.classList.add('opacity-50', 'pointer-events-none');
+                            btn.textContent = "Form Already Submitted";
+                        } else {
+                            content.textContent = "No active submissions found. Start a form to get started!";
+                        }
+                    }, err => {
+                        console.error("Firestore error:", err);
+                        document.getElementById('statusContent').textContent = "Unable to load status.";
+                    });
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('portalUser');
+            window.location.href = window.location.origin + '/login.html';
+        }
+
+        function toggleSupport() { 
+            alert("Support chat is available at support@websites-zfo6.onrender.com or contact rohanwest20@gmail.com"); 
+        }
+    </script>
+</body>
+</html>
