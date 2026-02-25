@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Website Form - Website Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
+    <style>.step-inactive { display: none; }</style>
+</head>
+<body class="bg-slate-900 min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden">
+        <div class="bg-slate-50 border-b p-6 flex justify-between items-center">
+            <h3 class="font-bold">Website Wizard</h3>
+            <span id="stepLabel" class="text-xs font-bold text-indigo-600 uppercase">Step 1</span>
+        </div>
+
+        <!-- Step 1 -->
+        <div id="step1" class="p-8 space-y-6">
+            <h4 class="text-xl font-semibold">Do you have a website?</h4>
+            <div class="grid grid-cols-2 gap-4">
+                <button onclick="handleQ1('yes')" class="p-6 border-2 rounded-xl hover:border-indigo-500 hover:bg-indigo-50 font-bold">Yes</button>
+                <button onclick="handleQ1('no')" class="p-6 border-2 rounded-xl hover:border-indigo-500 hover:bg-indigo-50 font-bold">No</button>
+            </div>
+            <div id="linkArea" class="hidden space-y-2">
+                <label class="text-sm font-medium">Link:</label>
+                <input type="url" id="websiteLink" class="w-full px-4 py-2 border rounded-lg" placeholder="https://...">
+                <button onclick="submitLink()" class="w-full bg-indigo-600 text-white py-2 rounded-lg">Continue</button>
+            </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div id="step2" class="step-inactive p-8 space-y-6">
+            <h4 class="text-xl font-semibold">How would you like to create your website?</h4>
+            <div class="space-y-3">
+                <button onclick="handleQ2('Google sites')" class="w-full p-4 border rounded-xl text-left hover:bg-slate-50">Google Sites</button>
+                <button onclick="handleQ2('Coding/GITHUB')" class="w-full p-4 border rounded-xl text-left hover:bg-slate-50">Coding / GitHub</button>
+                <button onclick="handleQ2('Other')" class="w-full p-4 border rounded-xl text-left hover:bg-slate-50">Other</button>
+            </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div id="step3" class="step-inactive p-8 space-y-6">
+            <h4 class="text-xl font-semibold">Would you like to create another website?</h4>
+            <div class="space-y-3">
+                <button onclick="handleQ3('GitHub/code')" class="w-full p-4 border rounded-xl text-left hover:bg-slate-50">GitHub / Code</button>
+                <button onclick="handleQ3('Google sites')" class="w-full p-4 border rounded-xl text-left hover:bg-slate-50">Google Sites</button>
+                <button onclick="handleQ3('Other')" class="w-full p-4 border rounded-xl text-left hover:bg-slate-50">Other</button>
+            </div>
+            <button onclick="save()" class="w-full text-slate-400 text-sm hover:underline">Finish Without Another</button>
+        </div>
+
+        <div id="finishStep" class="step-inactive p-10 text-center">
+            <div class="text-green-500 text-5xl mb-4">✓</div>
+            <h3 class="text-2xl font-bold mb-6">Success!</h3>
+            <button onclick="backToDashboard()" class="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold">Back to Dashboard</button>
+        </div>
+    </div>
+
+    <script>
+        // Use absolute URL for navigation to fix 'not a valid URL' errors
+        const user = JSON.parse(localStorage.getItem('portalUser'));
+        if (!user) {
+            window.location.href = window.location.origin + 'https://rohansweb-codexamples.github.io/Websites/login';
+        }
+
+        let firebaseConfig = {};
+        try {
+            firebaseConfig = JSON.parse(__firebase_config);
+        } catch (e) {
+            console.error("Firebase config not found.");
+        }
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-web-portal';
+
+        let answers = { userId: user ? user.id : 'unknown', userName: user ? user.name : 'Guest' };
+
+        function showStep(n) {
+            document.querySelectorAll('[id^="step"], #finishStep').forEach(s => s.classList.add('step-inactive'));
+            document.getElementById(n === 'finish' ? 'finishStep' : 'step' + n).classList.remove('step-inactive');
+            if(typeof n === 'number') document.getElementById('stepLabel').textContent = `Step ${n}`;
+        }
+
+        function handleQ1(ans) {
+            answers.hasWebsite = ans;
+            if (ans === 'yes') {
+                document.getElementById('linkArea').classList.remove('hidden');
+            } else {
+                showStep(2);
+            }
+        }
+
+        function submitLink() {
+            answers.websiteLink = document.getElementById('websiteLink').value;
+            // PDF logic: YES -> GO TO QUESTION 3
+            showStep(3);
+        }
+
+        function handleQ2(ans) {
+            answers.method = ans;
+            showStep(3);
+        }
+
+        function handleQ3(ans) {
+            answers.anotherChoice = ans;
+            save();
+        }
+
+        async function save() {
+            try {
+                answers.timestamp = firebase.firestore.FieldValue.serverTimestamp();
+                // Rule 1: Always use artifacts/{appId}/public/data/{collectionName}
+                await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('responses').add(answers);
+                showStep('finish');
+            } catch (err) {
+                console.error("Error saving response:", err);
+                alert("Failed to save response. Please try again.");
+            }
+        }
+
+        function backToDashboard() {
+            window.location.href = window.location.origin + 'https://rohansweb-codexamples.github.io/dashboard';
+        }
+    </script>
+</body>
+</html>
